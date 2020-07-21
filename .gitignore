@@ -1,0 +1,7 @@
+config.py
+old
+screenshots
+geckodriver.log
+run.log
+run.old.log
+__pycache__
