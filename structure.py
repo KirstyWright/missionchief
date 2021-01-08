@@ -30,15 +30,19 @@ DISPATCH_TYPES = {
     9: 'hems',
     10: 'rapid response vehicle',
     11: 'dunno 11',
-    12: 'dunno 12',
-    13: 'dunno 13',
+    12: 'dog support units (dsus)',
+    13: 'armed response vehicle (arv)',
     14: 'breathing apparatus support unit',
     15: 'incident command and control unit',
     16: 'dunno 16',
     17: 'dunno 17',
     18: 'dunno 18',
     19: 'jru',
-    20: 'operational team leader'
+    20: 'operational team leader',
+    21: 'dunno 21',
+    22: 'dunno 22',
+    23: 'dunno 23',
+    24: 'traffic car'
 }
 
 

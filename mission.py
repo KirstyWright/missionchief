@@ -26,7 +26,7 @@ class Mission(object):
         self.user_id = arg['user_id']
         self.patients = {}
         self.cpatients = None
-        logging.info(self.params)
+        logging.info('New incident {} - {}: {}'.format(self.name, self.id, self.address))
 
     def update(self, arg):
         self.params = arg
@@ -81,11 +81,14 @@ class Mission(object):
                 type = type.split(' or ', 1)[0]
             if (type.lower() == 'rescue support vehicle'):
                 type = 'rescue support unit'
+            if (type.lower() == 'armed response personnel'):
+                type = 'armed response vehicle (arv)'
+                quantity = quantity / 2  # Two personal in every ARV
             fresh[type.lower()] = quantity
 
         # Fresh is units we need
         for type, quantity in fresh.items():
-            for key, unit in self.assigned_units.items(): # For each assigned unit
+            for key, unit in self.assigned_units.items():  # For each assigned unit
                 if (
                     structure.DISPATCH_TYPES[unit.type] == type
                     or ( type == 'app' and unit.type == 10 and unit.name.startswith('AP') )
@@ -108,13 +111,13 @@ class Mission(object):
             debug[structure.DISPATCH_TYPES[unit.type]] = debug[structure.DISPATCH_TYPES[unit.type]] + 1
 
 
-        logging.info([
-            self.id, self.name, self.missing_text,
-            debug,
-            fresh,
-            self.patients,
-            self.cpatients
-        ])
+        # logging.info([
+        #     self.id, self.name, self.missing_text,
+        #     debug,
+        #     fresh,
+        #     self.patients,
+        #     self.cpatients
+        # ])
         return fresh
 
     def clear_units(self):

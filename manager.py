@@ -1,9 +1,6 @@
 from web import Web
-import ws
 import json
-import asyncio
 import logging
-import sys
 import splinter
 import time
 from unit import Unit
@@ -13,6 +10,8 @@ import queue
 from console import Console
 from building import Building
 import datetime
+import jsonpickle
+
 
 class Manager(object):
     """docstring for Manager."""
@@ -52,8 +51,9 @@ class Manager(object):
     def refresh_missions(self):
         results = self.web.get_started()
         for mission in results['missions']:
-            if (mission['alliance_id'] is not None):
-                continue
+            # if (mission['user_id'] != 2091):
+            #     logging.info('mission of id {} is not owned by 2091 - {}'.format(mission['id'], mission['user_id']))
+            #     continue
             if str(mission['id']) not in self.missions:
                 self.missions[str(mission['id'])] = Mission(mission)
             else:
@@ -93,8 +93,6 @@ class Manager(object):
                 # logging.info('unit id NOT on mission {} {}'.format(item['id'], item['mission_id']))
                 self.units[item['id']].clear_mission()
         elif data['type'] == 'patient_add':
-            logging.info('patient_add')
-            logging.info(item)
             if (str(item['mission_id']) in self.missions):
                 self.missions[str(item['mission_id'])].patients[str(item['id'])] = item
             else:
@@ -104,8 +102,6 @@ class Manager(object):
                 if (item['loop'] < 5):
                     self.queue.put({'type':'patient_add','data':item})
         elif data['type'] == 'patientcombined_add':
-            logging.info('patientcombined_add')
-            logging.info(item)
             if (str(item['mission_id']) in self.missions):
                 self.missions[str(item['mission_id'])].cpatients = item
             else:
@@ -126,6 +122,15 @@ class Manager(object):
                 self.update_single(item)
                 loop = loop + 1
             except queue.Empty:
+                with open('missionchief.json', 'w') as outfile:
+                    data={
+                        'missions': self.missions,
+                        'units': self.units,
+                        'updated_at': '{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now())
+                    }
+                    data = jsonpickle.encode(data, unpicklable=False)
+                    outfile.write(data)
+
                 break
 
     def run(self):
@@ -157,8 +162,9 @@ class Manager(object):
                         if ('type' in update and update['type'] == 'delete'):
                             logging.info('Just tried to delete a mission which we never had? {}'.format(update['id']))
                             continue
-                        if (update['alliance_id'] is not None):
-                            continue
+                        # if (update['user_id'] != 2091):
+                        #     logging.info('mission of id {} is now owned by 2091 - {}'.format(update['id'], update['user_id']))
+                        #     continue
                         self.missions[str(update['id'])] = Mission(update)
                     elif 'type' in update and update['type'] == 'delete':
                         del self.missions[str(update['id'])]
@@ -176,8 +182,8 @@ class Manager(object):
                         logging.info("Mission ended: {}, {}".format(mission.id, mission.name))
                         continue
                     self.console.update(self.units, self.missions)
-                    if (mission.alliance_id is not None):
-                        continue
+                    # if (mission.user_id != 2091):
+                    #     continue
                     available_units = self.get_available_units(units_already_sent)
                     required_units = mission.get_required_units(self.web)
                     # logging.info('Required units: {}'.format(required_units))
@@ -201,7 +207,6 @@ class Manager(object):
                     logging.info("Required to complete stack: {}".format(reserved_units))
 
                 time.sleep(1)
-                logging.info('loop')
             except Exception as instance:
                 logging.exception(instance)
                 time.sleep(5)

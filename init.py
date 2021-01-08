@@ -8,10 +8,10 @@ import multiprocessing
 import ws
 import logging
 import sys
-from config import Config
+import config
 
-username = Config.USERNAME
-password = Config.PASSWORD
+username = config.USERNAME
+password = config.PASSWORD
 
 logging.basicConfig(
     level=logging.INFO,
