@@ -44,14 +44,18 @@ class Mission(object):
         self.user_id = arg['user_id']
 
     def get_required_units(self, web):
-        result = web.mission_get_required_units(self.type_id)
-        required_units = result
-        # if (self.missing_text):
-        #     # Look through units on scene mark them as required then pull off rest
-        #     regex = r"(\d+)\s([A-Za-z\s]+)"
-        #     matches = re.finditer(regex, self.missing_text, re.MULTILINE)
-        #     required_units = {}
-        #
+
+        if (self.missing_text):
+            # Look through units on scene mark them as required then pull off rest
+            regex = r"(\d+)\s([A-Za-z\s]+)"
+            matches = re.finditer(regex, self.missing_text, re.MULTILINE)
+            required_units = {}
+            for matchNum, match in enumerate(matches):
+                required_units[match.group(2)] = int(match.group(1))
+        else:
+            result = web.mission_get_required_units(self.type_id)
+            required_units = result
+
         #     for matchNum, match in enumerate(matches):
         #         required_units[match.group(2)] = int(match.group(1))
         # Sort out who is already there
@@ -79,11 +83,16 @@ class Mission(object):
                 type = type[:-1]
             if (' or ' in type):
                 type = type.split(' or ', 1)[0]
-            if (type.lower() == 'rescue support vehicle'):
+            lower_type = type.lower()
+            if (lower_type == 'rescue support vehicle'):
                 type = 'rescue support unit'
-            if (type.lower() == 'armed response personnel'):
+            if (lower_type == 'armed response personnel'):
                 type = 'armed response vehicle (arv)'
                 quantity = quantity / 2  # Two personal in every ARV
+            if (lower_type == 'prv'):
+                type = 'primary response vehicle'
+            if (lower_type == 'srv'):
+                type = 'secondary response vehicle'
             fresh[type.lower()] = quantity
 
         # Fresh is units we need

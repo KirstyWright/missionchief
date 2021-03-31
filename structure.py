@@ -29,7 +29,7 @@ DISPATCH_TYPES = {
     8: 'police car',
     9: 'hems',
     10: 'rapid response vehicle',
-    11: 'dunno 11',
+    11: 'police helicopter',
     12: 'dog support units (dsus)',
     13: 'armed response vehicle (arv)',
     14: 'breathing apparatus support unit',
@@ -42,7 +42,13 @@ DISPATCH_TYPES = {
     21: 'dunno 21',
     22: 'dunno 22',
     23: 'dunno 23',
-    24: 'traffic car'
+    24: 'traffic car',
+    25: 'dunno 25',
+    26: 'dunno 26',
+    27: 'primary response vehicle',
+    28: 'secondary response vehicle',
+    29: 'welfare vehicle',
+    30: 'atv carrier'
 }
 
 

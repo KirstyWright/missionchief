@@ -51,9 +51,9 @@ class Manager(object):
     def refresh_missions(self):
         results = self.web.get_started()
         for mission in results['missions']:
-            # if (mission['user_id'] != 2091):
-            #     logging.info('mission of id {} is not owned by 2091 - {}'.format(mission['id'], mission['user_id']))
-            #     continue
+            if (mission['user_id'] != 2091):
+                logging.info('mission of id {} is not owned by 2091 - {}'.format(mission['id'], mission['user_id']))
+                continue
             if str(mission['id']) not in self.missions:
                 self.missions[str(mission['id'])] = Mission(mission)
             else:
@@ -84,7 +84,6 @@ class Manager(object):
             self.units[item['id']].set_state(item['fms_real'])
             if (item['fms_real'] == 5):
                 self.web.medical_transport(item['id'])
-            # if (item['mission_id'] != ''):
             if (str(item['mission_id']) in self.missions):
                 # logging.info('unit id in mission {} {}'.format(item['id'], item['mission_id']))
                 self.missions[str(item['mission_id'])].assign_unit(self.units[item['id']])
@@ -111,6 +110,7 @@ class Manager(object):
                 if (item['loop'] < 5):
                     self.queue.put({'type':'patientcombined_add','data':item})
         else:
+            logging.info('cannot deal with below')
             logging.info(data)
 
     def update_data(self):
@@ -122,16 +122,17 @@ class Manager(object):
                 self.update_single(item)
                 loop = loop + 1
             except queue.Empty:
-                with open('missionchief.json', 'w') as outfile:
-                    data={
-                        'missions': self.missions,
-                        'units': self.units,
-                        'updated_at': '{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now())
-                    }
-                    data = jsonpickle.encode(data, unpicklable=False)
-                    outfile.write(data)
-
                 break
+
+        with open('web/public/missionchief.json', 'w') as outfile:
+            data={
+                'missions': self.missions,
+                'units': self.units,
+                'updated_at': '{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now())
+            }
+            data = jsonpickle.encode(data, unpicklable=False)
+            outfile.write(data)
+            print("--end loop--")
 
     def run(self):
 
@@ -162,9 +163,9 @@ class Manager(object):
                         if ('type' in update and update['type'] == 'delete'):
                             logging.info('Just tried to delete a mission which we never had? {}'.format(update['id']))
                             continue
-                        # if (update['user_id'] != 2091):
-                        #     logging.info('mission of id {} is now owned by 2091 - {}'.format(update['id'], update['user_id']))
-                        #     continue
+                        if (update['user_id'] != 2091):
+                            logging.info('mission of id {} is now owned by 2091 - {}'.format(update['id'], update['user_id']))
+                            continue
                         self.missions[str(update['id'])] = Mission(update)
                     elif 'type' in update and update['type'] == 'delete':
                         del self.missions[str(update['id'])]
@@ -172,6 +173,8 @@ class Manager(object):
                         self.missions[str(update['id'])].update(update)
 
                 self.update_data() # Run the process queue (not related to mission)
+
+                available_units_at_start = self.get_available_units([])
                 for key, mission in self.missions.items():
                     if (not self.web.mission_active(mission.id)):
                         self.queue.put({
@@ -182,9 +185,7 @@ class Manager(object):
                         logging.info("Mission ended: {}, {}".format(mission.id, mission.name))
                         continue
                     self.console.update(self.units, self.missions)
-                    # if (mission.user_id != 2091):
-                    #     continue
-                    available_units = self.get_available_units(units_already_sent)
+                    available_units = self.get_available_units(units_already_sent, available_units_at_start)
                     required_units = mission.get_required_units(self.web)
                     # logging.info('Required units: {}'.format(required_units))
                     sending_ids = []
@@ -225,7 +226,7 @@ class Manager(object):
                 pass  # ie continue into the block
             elif (word_type != structure.DISPATCH_TYPES[unit.type]):
                 continue
-            distance = structure.get_distance([longitude,latitude], unit.get_location())
+            distance = structure.get_distance([longitude, latitude], unit.get_location())
             while True:
                 # Deal with two or more units at the same station
                 if (distance in unit_distances):
@@ -245,13 +246,16 @@ class Manager(object):
 
         return closest_units
 
-    def get_available_units(self, units_already_sent):
+    def get_available_units(self, units_already_sent, units_to_pick_from=None):
         available_units = {}
-        units = self.units.items()
+        if (units_to_pick_from):
+            units = units_to_pick_from.items()
+        else:
+            units = self.units.items()
         for key, unit in units:
             if (units_already_sent and unit.id in units_already_sent):
                 continue
-            if (unit.state in [1,2] and unit.mission == None):
+            if (unit.state in [1, 2] and unit.mission is None):
                 available_units[unit.id] = unit
         return available_units
 
@@ -270,6 +274,6 @@ class Manager(object):
             self.browser.visit('https://www.missionchief.co.uk')
             self.cookies = self.browser.cookies.all()
             logging.info('logged in')
-        except splinter.exceptions.ElementDoesNotExist as e:
+        except splinter.exceptions.ElementDoesNotExist:
             self.cookies = self.browser.cookies.all()
             logging.info('logged in')

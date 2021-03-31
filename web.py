@@ -56,7 +56,7 @@ class Web(object):
                 continue
             if match.group(1) == 'vehicleMarkerAdd':
                 units.append(data)
-        logging.info(units)
+        # logging.info(units)
         return units
 
     def get_mission_auth_code(self, mission_id):

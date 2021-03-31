@@ -27,12 +27,12 @@ class Console(object):
         self.screen.addstr(0, 0, 'Missionchief v2 [{}] - Active cads: {}'.format(localtime, len(missions_items)))
 
         height = 2
-        width = 10
+        width = 25
         column = 1
         widthset = 0
         for unit_id, unit in units.items():
             try:
-                self.screen.addstr(height, widthset, '{} '.format(unit.name), curses.color_pair(structure.STATE_COLOURS[unit.state]))
+                self.screen.addstr(height, widthset, '[{}] {} '.format(unit.state, unit.name), curses.color_pair(structure.STATE_COLOURS[unit.state]))
             except curses.error as e:
                 widthset = width * column
                 column = column + 1
