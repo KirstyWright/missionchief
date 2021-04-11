@@ -23,7 +23,8 @@ class Web(object):
             except json.decoder.JSONDecodeError:
                 continue
             if match.group(1) == 'buildingMarkerAdd':
-                buildings.append(data)
+                if (data['user_id'] == 2091):
+                    buildings.append(data)
         return buildings
 
     def get_started(self):
@@ -69,8 +70,8 @@ class Web(object):
         result = requests.get(self.base_url + '/missions/{}'.format(mission_id), cookies=self.cookies)
         return not 'The mission has been successfully completed.' in result.text
 
-    def mission_get_required_units(self, mission_type_id):
-        url = self.base_url + "/einsaetze/{}".format(mission_type_id)
+    def mission_get_required_units(self, mission_id, mission_type_id):
+        url = self.base_url + "/einsaetze/{}?mission_id={}".format(mission_type_id, mission_id)
         headers = {
             'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:69.0) Gecko/20100101 Firefox/69.0",
             'Accept': "text/html,application/xhtml+xml,application/xml;q=0.9,/;q=0.8",
@@ -92,6 +93,20 @@ class Web(object):
                 fresh[key[9:]] = int(match.group(3).strip())
         return fresh
 
+    def back_alarm_units(self, units):
+        for id, unit in units.items():
+            url = self.base_url + "/vehicles/{}/backalarm".format(unit.id)
+            headers = {
+                'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:69.0) Gecko/20100101 Firefox/69.0",
+                'Accept': "text/html,application/xhtml+xml,application/xml;q=0.9,/;q=0.8",
+                'Accept-Language': "en-GB,en;q=0.5",
+                'Content-Type': "application/x-www-form-urlencoded",
+                'Connection': "keep-alive",
+                'Referer': "https://missionchief.co.uk/vehicles/{}".format(unit.id),
+                'Upgrade-Insecure-Requests': "1",
+                'cache-control': "no-cache",
+            }
+            response = requests.request("GET", url, headers=headers, cookies=self.cookies)
 
     def dispatch(self, mission_id, unit_ids):
         url = self.base_url + "/missions/{}/alarm".format(mission_id)
@@ -121,6 +136,15 @@ class Web(object):
         matches = re.finditer(r"<a(\s)?(href=\")([^\"]*)\"(\s)?class=\"([A-Za-z\s-]*)\"", result.text, re.MULTILINE)
         for match in matches:
             if ("btn-success" in match.group(5) and "patient" in match.group(3)):
+                requests.get(self.base_url + match.group(3), cookies=self.cookies)
+                return True
+        return False
+
+    def prisoner_transport(self, mission_id):
+        result = requests.get(self.base_url + '/missions/{}'.format(mission_id), cookies=self.cookies)
+        matches = re.finditer(r"<a(\s)?(href=\")([^\"]*)\"(\s)?class=\"([A-Za-z\s-]*)\"", result.text, re.MULTILINE)
+        for match in matches:
+            if ("btn-success" in match.group(5) and "vehicles" in match.group(3)):
                 requests.get(self.base_url + match.group(3), cookies=self.cookies)
                 return True
         return False

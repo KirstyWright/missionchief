@@ -5,6 +5,7 @@ STATES = {
     3: "On route",
     4: 'On scene',
     5: 'Waiting/with pt?',
+    6: 'unknown',
     7: 'Transporting pt'
 }
 
@@ -14,6 +15,7 @@ STATE_COLOURS = {
     3: 4,
     4: 5,
     5: 5,
+    6: 1,
     7: 1
 }
 
