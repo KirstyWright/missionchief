@@ -25,55 +25,71 @@ class Ws(object):
 
     async def run(self):
         # connect to the server
-        logging.info('Starting WS')
-        async with Client("https://www.missionchief.co.uk/faye", extensions=[MyExtension()]) as client:
-            await client.subscribe("/allen_GB")
-            await client.subscribe("/private-alliance/019398d6-1a5b-41d8-a590-d4e373c9eff5/en_GB")
-            await client.subscribe("/private-user2091en_GB")
-            logging.info("Subscribed to WS")
-            self.queue.put({
-                'type': 'ws_start',
-            })
-            # listen for incoming messages
-            async for message in client:
-                if ('data' not in message):
-                    logging.warning('Issue found {}'.format(message))
-                else:
-                    matches = re.finditer(r"([a-zA-Z]+)\(\s?([^;]+}\s?)\);", message['data'], re.MULTILINE)
-                    # if (matches.group(1))
-                    for match in matches:
-                        data = json.loads(match.group(2))
-                        if match.group(1) == 'missionMarkerAdd':
-                            self.add_mission(data)
-                        elif match.group(1) == 'patientMarkerAdd':
-                            self.queue.put({
-                                'type': 'patient_add',
-                                'data': data
-                            })
-                            # patientMarkerAddCombined
-                        elif match.group(1) == 'patientMarkerAddCombined':
-                            self.queue.put({
-                                'type': 'patientcombined_add',
-                                'data': data
-                            })
-                        elif match.group(1) == 'radioMessage':
-                            self.radio_message(data)
-                        elif match.group(1) == 'deleteMission':
-                            self.del_mission(data)
-                            pass
-                        elif match.group(1) == 'vehicleMarkerAdd':
-                            # matches = re.finditer(r"([a-zA-Z]+)((\s?([^;]+}\s?)));", data, re.MULTILINE)
-                            # for match in matches:
-                            #     try:
-                            #         specific = json.loads(match.group(2))
-                            #         self.add_unit(specific)
-                            #     except json.decoder.JSONDecodeError:
-                            #         continue
-                            pass
-                        elif match.group(1) == 'vehicleDrive':
-                            pass
-                        else:
-                            logging.info('Not handling {}'.format(match.group(1)))
+        while (True):
+            logging.info('Starting WS')
+            async with Client("https://www.missionchief.co.uk/faye", extensions=[MyExtension()]) as client:
+                await client.subscribe("/allen_GB")
+                # await client.subscribe("/private-alliance/019398d6-1a5b-41d8-a590-d4e373c9eff5/en_GB")
+                await client.subscribe("/private-user2091en_GB")
+                logging.info("Subscribed to WS")
+                self.queue.put({
+                    'type': 'ws_start',
+                })
+                # listen for incoming messages
+                async for message in client:
+                    if ('data' not in message):
+                        logging.warning('Issue found {}'.format(message))
+                    else:
+                        matches = re.finditer(r"([a-zA-Z]+)\(\s?([^;]+}?\s?)\);", message['data'], re.MULTILINE)
+                        # if (matches.group(1))
+                        for match in matches:
+                            try:
+                                data = json.loads(match.group(2))
+                            except json.decoder.JSONDecodeError:
+                                logging.info('JSON error reported {}'.format(match.group(2)))
+                                data = match.group(2)
+                            if match.group(1) == 'missionMarkerAdd':
+                                self.add_mission(data)
+                            elif match.group(1) == 'patientMarkerAdd':
+                                self.queue.put({
+                                    'type': 'patient_add',
+                                    'data': data
+                                })
+                            elif match.group(1) == 'patientDelete':
+                                self.queue.put({
+                                    'type': 'patient_delete',
+                                    'data': data
+                                })
+                                # patientMarkerAddCombined
+                            elif match.group(1) == 'patientMarkerAddCombined':
+                                self.queue.put({
+                                    'type': 'patientcombined_add',
+                                    'data': data
+                                })
+                            elif match.group(1) == 'prisonerMarkerAdd':
+                                self.queue.put({
+                                    'type': 'prisonermarker_add',
+                                    'data': data
+                                })
+                            elif match.group(1) == 'radioMessage':
+                                self.radio_message(data)
+                            # elif match.group(1) == 'missionDelete':
+                            #     self.del_mission(data)
+                            elif match.group(1) == 'deleteMission':
+                                self.del_mission(data)
+                            elif match.group(1) == 'vehicleMarkerAdd':
+                                # matches = re.finditer(r"([a-zA-Z]+)((\s?([^;]+}\s?)));", data, re.MULTILINE)
+                                # for match in matches:
+                                #     try:
+                                #         specific = json.loads(match.group(2))
+                                #         self.add_unit(specific)
+                                #     except json.decoder.JSONDecodeError:
+                                #         continue
+                                pass
+                            elif match.group(1) == 'vehicleDrive':
+                                pass
+                            else:
+                                logging.info('Not handling {} {}'.format(match.group(1), match.group(2)))
 
     def del_mission(self, data):
         self.queue.put({
