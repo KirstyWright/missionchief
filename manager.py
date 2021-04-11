@@ -28,6 +28,7 @@ class Manager(object):
 
         self.units = {}
         self.buildings = {}
+        self.mission_ids = []
         self.missions = {}
         self.cookies = None
         self.get_login_cookies()
@@ -58,6 +59,9 @@ class Manager(object):
                 self.missions[str(mission['id'])] = Mission(mission)
             else:
                 self.missions[str(mission['id'])].update(mission)
+
+            if (str(mission['id']) not in self.mission_ids):
+                self.mission_ids.append(str(mission['id']))
         for drive in results['drive']:
             self.queue.put({
                 'type': 'unit_update',
@@ -91,6 +95,12 @@ class Manager(object):
                 # Clearly not on a mission
                 # logging.info('unit id NOT on mission {} {}'.format(item['id'], item['mission_id']))
                 self.units[item['id']].clear_mission()
+        elif data['type'] == 'patient_delete':
+            logging.info('hit patient delete')
+            for key, mission in self.missions.items():
+                if (mission.patients and item in mission.patients):
+                    logging.info('Found patient {} in mission {} deleting')
+                    del self.missions[key].patients[item]
         elif data['type'] == 'patient_add':
             if (str(item['mission_id']) in self.missions):
                 self.missions[str(item['mission_id'])].patients[str(item['id'])] = item
@@ -109,6 +119,8 @@ class Manager(object):
                 item['loop'] = item['loop'] + 1
                 if (item['loop'] < 5):
                     self.queue.put({'type':'patientcombined_add','data':item})
+        elif data['type'] == 'prisonermarker_add':
+            self.web.prisoner_transport(item['mission_id'])
         else:
             logging.info('cannot deal with below')
             logging.info(data)
@@ -147,11 +159,20 @@ class Manager(object):
 
         self.web = Web(self.base_url, self.cookies)
         self.refresh_units()
+        self.web.back_alarm_units(self.units)
         self.refresh_missions()
         self.update_data()
         self.console.update(self.units, self.missions)
+        loop_reset = 0
         while True:
             try:
+                if (loop_reset > 25):
+                    loop_reset = 0
+                    logging.info('-- Big loop --')
+                    self.refresh_missions()
+                    self.refresh_units()
+                    self.update_data()
+                loop_reset = loop_reset + 1
                 reserved_units = {}
                 units_already_sent = []
 
@@ -169,13 +190,16 @@ class Manager(object):
                         self.missions[str(update['id'])] = Mission(update)
                     elif 'type' in update and update['type'] == 'delete':
                         del self.missions[str(update['id'])]
+                        self.mission_ids.remove(str(update['id']))
                     else:
                         self.missions[str(update['id'])].update(update)
 
                 self.update_data() # Run the process queue (not related to mission)
 
                 available_units_at_start = self.get_available_units([])
-                for key, mission in self.missions.items():
+                # for key, mission in self.missions.items():
+                for mission_id in self.mission_ids:
+                    mission = self.missions[mission_id]
                     if (not self.web.mission_active(mission.id)):
                         self.queue.put({
                             'type': 'mission_delete',

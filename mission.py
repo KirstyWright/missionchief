@@ -45,54 +45,67 @@ class Mission(object):
 
     def get_required_units(self, web):
 
-        if (self.missing_text):
-            # Look through units on scene mark them as required then pull off rest
-            regex = r"(\d+)\s([A-Za-z\s]+)"
-            matches = re.finditer(regex, self.missing_text, re.MULTILINE)
-            required_units = {}
-            for matchNum, match in enumerate(matches):
-                required_units[match.group(2)] = int(match.group(1))
-        else:
-            result = web.mission_get_required_units(self.type_id)
-            required_units = result
-
+        # if (self.missing_text):
+        #     # Look through units on scene mark them as required then pull off rest
+        #     regex = r"(\d+)\s([A-Za-z\s]+)"
+        #     matches = re.finditer(regex, self.missing_text, re.MULTILINE)
+        #     required_units = {}
         #     for matchNum, match in enumerate(matches):
         #         required_units[match.group(2)] = int(match.group(1))
-        # Sort out who is already there
+        # else:
+        result = web.mission_get_required_units(self.id, self.type_id)
+        required_units = result
+        # logging.info(required_units)
         required_units['hems'] = 0
         required_units['ambulance'] = 0
         required_units['app'] = 0
         if (self.cpatients is None):
             for id, patient in self.patients.items():
-                if ('missing_text' in patient and patient['missing_text'] is not None and 'hems' in patient['missing_text'].lower()):
-                    required_units['hems'] = required_units['hems'] + 1
-                if ('missing_text' in patient and patient['missing_text'] is not None and 'critical care' in patient['missing_text'].lower()):
-                    required_units['app'] = required_units['app'] + 1
-                required_units['ambulance'] = required_units['ambulance'] + 1
+                added = False
+                if ('missing_text' in patient and patient['missing_text'] is not None):
+                    missing_text = patient['missing_text'].lower()
+                    if ('hems' in missing_text):
+                        required_units['hems'] = required_units['hems'] + 1
+                        added = True
+                    if ('critical care' in missing_text):
+                        required_units['app'] = required_units['app'] + 1
+                        added = True
+                    if ('ambulance' in missing_text):
+                        required_units['ambulance'] = required_units['ambulance'] + 1
+                        added = True
+
+                if (not added and patient['missing_text'] is None):
+                    required_units['ambulance'] = required_units['ambulance'] + 1
         else:
-            required_units['ambulance'] = self.cpatients['count']
             for crequirement, ccount in self.cpatients['errors'].items():
                 if ('critical care' in crequirement.lower()):
                     required_units['app'] = required_units['app'] + ccount
+                if ('ambulance' in crequirement.lower()):
+                    required_units['ambulance'] = required_units['ambulance'] + ccount
                 if ('hems' in crequirement.lower()):
                     required_units['hems'] = required_units['hems'] + ccount
 
         fresh = {}
         for type, quantity in required_units.items():
-            if (type.endswith('s') and not type == 'hems'):
-                type = type[:-1]
             if (' or ' in type):
                 type = type.split(' or ', 1)[0]
-            lower_type = type.lower()
+            if (type.endswith('s') and not type == 'hems'):
+                type = type[:-1]
+            lower_type = type.lower().strip()
             if (lower_type == 'rescue support vehicle'):
                 type = 'rescue support unit'
-            if (lower_type == 'armed response personnel'):
+            elif (lower_type == 'armed response personnel'):
                 type = 'armed response vehicle (arv)'
                 quantity = quantity / 2  # Two personal in every ARV
-            if (lower_type == 'prv'):
+            elif (lower_type == 'prv'):
                 type = 'primary response vehicle'
-            if (lower_type == 'srv'):
+            elif (lower_type == 'srv'):
                 type = 'secondary response vehicle'
+            elif (lower_type == 'policehelicopter'):
+                type = 'police helicopter'
+            elif (lower_type == 'dog support unit'):
+                type = 'dog support units (dsus)'
+
             fresh[type.lower()] = quantity
 
         # Fresh is units we need
@@ -101,11 +114,11 @@ class Mission(object):
                 if (
                     structure.DISPATCH_TYPES[unit.type] == type
                     or ( type == 'app' and unit.type == 10 and unit.name.startswith('AP') )
-                ):  # If unit type is the type we are looking for
-                    # if (self.missing_text is not None and not self.unit_updated and str(unit.state) == str(3)): # If the missing text is present and the unit is on route
-                    #     quantity = quantity - 1
-                    # elif (self.missing_text is None):
-                    quantity = quantity - 1
+                ):
+                    if (self.missing_text is not None and int(unit.state) == 3):
+                        quantity = quantity - 1
+                    else:
+                        quantity = quantity - 1
             fresh[type] = quantity
 
         if (self.params['user_id'] is None and len(self.assigned_units) < 1):
@@ -120,13 +133,13 @@ class Mission(object):
             debug[structure.DISPATCH_TYPES[unit.type]] = debug[structure.DISPATCH_TYPES[unit.type]] + 1
 
 
-        # logging.info([
-        #     self.id, self.name, self.missing_text,
-        #     debug,
-        #     fresh,
-        #     self.patients,
-        #     self.cpatients
-        # ])
+        logging.info([
+            self.id, self.name, self.missing_text,
+            debug, # assigned units already
+            fresh,
+            self.patients,
+            self.cpatients
+        ])
         return fresh
 
     def clear_units(self):
