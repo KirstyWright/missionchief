@@ -16,7 +16,7 @@ class MyExtension(Extension):
             # element['ext']["/private-alliance/52866bc4-a85d-4f89-8c0d-e3cb121513a9/en_GB"] = "aaec8ec969698829d871e1a8d79ea60837f53760";
             # element['ext']["/allen_GB"] = "c6aef8f1e52485d1d95cb5130b82efdbff4c0ff4";
             element['ext']["/allen_GB"] = "c6aef8f1e52485d1d95cb5130b82efdbff4c0ff4"
-            element['ext']["/private-alliance/019398d6-1a5b-41d8-a590-d4e373c9eff5/en_GB"] = "ea24d4a1bbc12f09d80cb04a47a8156f4da04b1a"
+            element['ext']["/private-alliance/04a6631c-76c2-492f-9b98-15a6a33ecf13/en_GB"] = "e3182feaaae740d688c3904875600177a776348c"
             element['ext']["/private-user2091en_GB"] = "13afdb3a34974419a4aa410f761891ce1242b36a"
 
 
@@ -29,7 +29,7 @@ class Ws(object):
             logging.info('Starting WS')
             async with Client("https://www.missionchief.co.uk/faye", extensions=[MyExtension()]) as client:
                 await client.subscribe("/allen_GB")
-                # await client.subscribe("/private-alliance/019398d6-1a5b-41d8-a590-d4e373c9eff5/en_GB")
+                await client.subscribe("/private-alliance/04a6631c-76c2-492f-9b98-15a6a33ecf13/en_GB")
                 await client.subscribe("/private-user2091en_GB")
                 logging.info("Subscribed to WS")
                 self.queue.put({

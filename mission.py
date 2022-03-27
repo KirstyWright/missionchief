@@ -4,6 +4,7 @@ import structure
 from unit import Unit as unit_structure
 import re
 import sys
+import math
 
 class Mission(object):
     """docstring for Mission."""
@@ -59,7 +60,11 @@ class Mission(object):
         required_units['hems'] = 0
         required_units['ambulance'] = 0
         required_units['app'] = 0
+        required_units['ambulance officer'] = 0
+        required_units['mass casualty equipment'] = 0
+        total_patients = 0
         if (self.cpatients is None):
+            total_patients = len(self.patients)
             for id, patient in self.patients.items():
                 added = False
                 if ('missing_text' in patient and patient['missing_text'] is not None):
@@ -67,6 +72,7 @@ class Mission(object):
                     if ('hems' in missing_text):
                         required_units['hems'] = required_units['hems'] + 1
                         added = True
+                        logging.info("FOUND1")
                     if ('critical care' in missing_text):
                         required_units['app'] = required_units['app'] + 1
                         added = True
@@ -77,13 +83,26 @@ class Mission(object):
                 if (not added and patient['missing_text'] is None):
                     required_units['ambulance'] = required_units['ambulance'] + 1
         else:
+            total_patients = 0
+            if (self.cpatients['untouched'] and self.cpatients['untouched'] > 0):
+                required_units['ambulance'] = required_units['ambulance'] + self.cpatients['untouched']
+                total_patients = self.cpatients['untouched']
+
             for crequirement, ccount in self.cpatients['errors'].items():
                 if ('critical care' in crequirement.lower()):
                     required_units['app'] = required_units['app'] + ccount
                 if ('ambulance' in crequirement.lower()):
                     required_units['ambulance'] = required_units['ambulance'] + ccount
                 if ('hems' in crequirement.lower()):
+                    logging.info("FOUND2")
                     required_units['hems'] = required_units['hems'] + ccount
+                total_patients = total_patients + ccount
+
+        if (total_patients >= 5):
+            required_units['ambulance officer'] = math.ceil(total_patients / 10);
+        if (total_patients > 20):
+            required_units['mass casualty equipment'] + 1;
+        logging.info("*Total patients for {} = {}".format(self.name, total_patients))
 
         fresh = {}
         for type, quantity in required_units.items():
@@ -105,6 +124,9 @@ class Mission(object):
                 type = 'police helicopter'
             elif (lower_type == 'dog support unit'):
                 type = 'dog support units (dsus)'
+            elif (lower_type == 'iccu'):
+                type = 'incident command and control unit'
+
 
             fresh[type.lower()] = quantity
 

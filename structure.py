@@ -50,7 +50,11 @@ DISPATCH_TYPES = {
     27: 'primary response vehicle',
     28: 'secondary response vehicle',
     29: 'welfare vehicle',
-    30: 'atv carrier'
+    30: 'atv carrier',
+    31: 'ambulance control unit',
+    32: 'cbrn vehicle',
+    33: 'mass casualty equipment',
+    34: 'ambulance officer'
 }
 
 
